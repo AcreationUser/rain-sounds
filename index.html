@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>тропический ливень</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;1,300;1,400&family=Raleway:wght@200;300;400&display=swap" rel="stylesheet">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  background: #040e18;
+  font-family: 'Raleway', sans-serif;
+}
+
+#canvas {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+}
+
+.foliage {
+  position: fixed;
+  bottom: 0;
+  z-index: 3;
+  pointer-events: none;
+}
+.foliage-left { left: -10px; }
+.foliage-right { right: -10px; transform: scaleX(-1); }
+
+.flash {
+  position: fixed;
+  inset: 0;
+  background: rgba(210, 235, 255, 0);
+  z-index: 4;
+  pointer-events: none;
+  transition: background 0.04s;
+}
+.flash.on { background: rgba(210, 235, 255, 0.18); }
+
+.panel {
+  position: fixed;
+  z-index: 10;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(6, 20, 35, 0.7);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(130, 210, 255, 0.13);
+  border-radius: 28px;
+  padding: 44px 52px 40px;
+  min-width: 320px;
+  text-align: center;
+  box-shadow:
+    0 0 80px rgba(0, 80, 160, 0.18),
+    0 20px 60px rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+.title {
+  font-family: 'Cormorant Garamond', serif;
+  font-style: italic;
+  font-weight: 300;
+  font-size: 2rem;
+  color: rgba(195, 235, 255, 0.92);
+  letter-spacing: 0.04em;
+  text-shadow: 0 0 50px rgba(100, 190, 255, 0.5);
+  margin-bottom: 5px;
+  line-height: 1;
+}
+
+.subtitle {
+  font-size: 0.62rem;
+  font-weight: 200;
+  letter-spacing: 0.35em;
+  text-transform: uppercase;
+  color: rgba(110, 195, 175, 0.45);
+  margin-bottom: 36px;
+}
+
+.play-btn {
+  width: 62px;
+  height: 62px;
+  border-radius: 50%;
+  background: rgba(130, 210, 255, 0.08);
+  border: 1px solid rgba(130, 210, 255, 0.25);
+  color: rgba(195, 235, 255, 0.85);
+  font-size: 1.3rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 30px;
+  transition: all 0.35s ease;
+  box-shadow: 0 0 25px rgba(100, 190, 255, 0.08);
+  user-select: none;
+}
+.play-btn:hover {
+  background: rgba(130, 210, 255, 0.15);
+  box-shadow: 0 0 40px rgba(100, 190, 255, 0.2);
+  transform: scale(1.06);
+}
+.play-btn.playing {
+  background: rgba(130, 210, 255, 0.14);
+  border-color: rgba(130, 210, 255, 0.4);
+  box-shadow: 0 0 50px rgba(100, 190, 255, 0.25);
+}
+
+.intensities {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  margin-bottom: 28px;
+}
+
+.int-btn {
+  flex: 1;
+  padding: 9px 6px 10px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(130, 210, 255, 0.1);
+  border-radius: 14px;
+  color: rgba(170, 215, 255, 0.4);
+  font-family: 'Raleway', sans-serif;
+  font-size: 0.68rem;
+  font-weight: 300;
+  letter-spacing: 0.12em;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+.int-btn:hover {
+  background: rgba(130, 210, 255, 0.06);
+  border-color: rgba(130, 210, 255, 0.2);
+  color: rgba(195, 235, 255, 0.75);
+}
+.int-btn.active {
+  background: rgba(130, 210, 255, 0.1);
+  border-color: rgba(130, 210, 255, 0.38);
+  color: rgba(200, 238, 255, 0.95);
+  box-shadow: 0 0 18px rgba(100, 190, 255, 0.1);
+}
+
+.vol-row {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+}
+.vol-icon {
+  font-size: 0.82rem;
+  color: rgba(110, 195, 175, 0.4);
+  width: 18px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+input[type=range] {
+  -webkit-appearance: none;
+  appearance: none;
+  flex: 1;
+  height: 2px;
+  background: rgba(130, 210, 255, 0.18);
+  border-radius: 2px;
+  outline: none;
+  cursor: pointer;
+}
+input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  background: rgba(165, 220, 255, 0.85);
+  box-shadow: 0 0 8px rgba(110, 185, 255, 0.55);
+  cursor: pointer;
+}
+input[type=range]::-moz-range-thumb {
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  background: rgba(165, 220, 255, 0.85);
+  border: none;
+  cursor: pointer;
+}
+
+.lightning-note {
+  margin-top: 18px;
+  font-size: 0.6rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: rgba(110, 195, 175, 0.28);
+  font-weight: 200;
+  opacity: 0;
+  transition: opacity 0.6s ease;
+}
+.lightning-note.show { opacity: 1; }
+</style>
+</head>
+<body>
+
+<div class="flash" id="flash"></div>
+<canvas id="canvas"></canvas>
+
+<!-- Left foliage -->
+<svg class="foliage foliage-left" width="260" height="380" viewBox="0 0 260 380" fill="none">
+  <path d="M-30 380 C30 330 10 250 80 210 C55 270 100 265 125 240 C85 290 150 310 165 285 C120 340 185 365 210 350 L-30 380Z" fill="#0b2a17" opacity="0.97"/>
+  <path d="M-50 380 C15 345 -5 275 65 240 C35 300 88 295 112 268 C65 318 135 335 150 310 C100 360 170 378 200 368 L-50 380Z" fill="#082010" opacity="0.92"/>
+  <path d="M5 380 C55 325 35 240 115 200 C100 265 148 255 168 230 C122 285 190 305 208 278 C155 335 222 358 248 344 L5 380Z" fill="#0f2d1b" opacity="0.87"/>
+  <path d="M-15 380 C25 350 5 300 55 270 C40 310 75 305 95 285 C60 325 115 340 130 318 L-15 380Z" fill="#061a0c" opacity="0.8"/>
+  <ellipse cx="50" cy="285" rx="45" ry="13" fill="#0a2214" transform="rotate(-25 50 285)" opacity="0.65"/>
+  <ellipse cx="15" cy="325" rx="55" ry="11" fill="#061510" transform="rotate(-18 15 325)" opacity="0.75"/>
+</svg>
+
+<!-- Right foliage (mirrored) -->
+<svg class="foliage foliage-right" width="260" height="380" viewBox="0 0 260 380" fill="none">
+  <path d="M-30 380 C30 330 10 250 80 210 C55 270 100 265 125 240 C85 290 150 310 165 285 C120 340 185 365 210 350 L-30 380Z" fill="#0b2a17" opacity="0.97"/>
+  <path d="M-50 380 C15 345 -5 275 65 240 C35 300 88 295 112 268 C65 318 135 335 150 310 C100 360 170 378 200 368 L-50 380Z" fill="#082010" opacity="0.92"/>
+  <path d="M5 380 C55 325 35 240 115 200 C100 265 148 255 168 230 C122 285 190 305 208 278 C155 335 222 358 248 344 L5 380Z" fill="#0f2d1b" opacity="0.87"/>
+  <path d="M-15 380 C25 350 5 300 55 270 C40 310 75 305 95 285 C60 325 115 340 130 318 L-15 380Z" fill="#061a0c" opacity="0.8"/>
+</svg>
+
+<div class="panel">
+  <div class="title">тропический ливень</div>
+  <div class="subtitle">атмосферный плеер</div>
+
+  <button class="play-btn" id="playBtn" onclick="togglePlay()">▶</button>
+
+  <div class="intensities">
+    <button class="int-btn active" data-track="Rainforest.mp3" onclick="setTrack(this)">rainforest</button>
+    <button class="int-btn" data-track="GentleStream.mp3" onclick="setTrack(this)">gentle stream</button>
+    <button class="int-btn" data-track="NightNature.mp3" onclick="setTrack(this)">night nature</button>
+  </div>
+
+  <div class="vol-row">
+    <span class="vol-icon">○</span>
+    <input type="range" id="vol" min="0" max="100" value="65" oninput="setVol(this.value)">
+    <span class="vol-icon">◉</span>
+  </div>
+
+  <div class="lightning-note show" id="lhint">нажми на экран — молния</div>
+</div>
+
+<script>
+// ── CANVAS ──────────────────────────────────────────────────
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+
+function resize() {
+  canvas.width = innerWidth;
+  canvas.height = innerHeight;
+}
+resize();
+addEventListener('resize', resize);
+
+let level = 1;
+const DROP_N = [0, 160, 420, 720];
+
+class Drop {
+  constructor(scatter) {
+    this.scatter = scatter;
+    this.reset();
+    if (scatter) this.y = Math.random() * canvas.height;
+  }
+  reset() {
+    const spd = 0.3 + level * 0.35;
+    this.x = Math.random() * (canvas.width + 100) - 50;
+    this.y = -Math.random() * 80;
+    this.speed = (7 + Math.random() * 9) * spd;
+    this.len = (10 + Math.random() * 22) * spd;
+    this.op = 0.15 + Math.random() * 0.45;
+    this.w = 0.35 + Math.random() * 0.7;
+  }
+  update() {
+    this.y += this.speed;
+    this.x += this.speed * 0.13;
+    if (this.y > canvas.height + 30) this.reset();
+  }
+  draw() {
+    ctx.beginPath();
+    ctx.moveTo(this.x, this.y);
+    ctx.lineTo(this.x + this.len * 0.13, this.y + this.len);
+    ctx.strokeStyle = `rgba(148, 208, 255, ${this.op})`;
+    ctx.lineWidth = this.w;
+    ctx.stroke();
+  }
+}
+
+class Ripple {
+  constructor() { this.reset(); this.delay = Math.random() * 90; }
+  reset() {
+    this.x = Math.random() * canvas.width;
+    this.y = canvas.height * 0.72 + Math.random() * canvas.height * 0.28;
+    this.r = 0;
+    this.max = 10 + Math.random() * 22;
+    this.spd = 0.35 + Math.random() * 0.35;
+    this.delay = 0;
+  }
+  update() {
+    if (this.delay > 0) { this.delay--; return; }
+    this.r += this.spd;
+    if (this.r > this.max) this.reset();
+  }
+  draw() {
+    if (this.delay > 0 || this.r < 0.3) return;
+    const op = 0.45 * (1 - this.r / this.max);
+    ctx.beginPath();
+    ctx.ellipse(this.x, this.y, this.r * 2.2, this.r * 0.55, 0, 0, Math.PI * 2);
+    ctx.strokeStyle = `rgba(148, 208, 255, ${op})`;
+    ctx.lineWidth = 0.55;
+    ctx.stroke();
+  }
+}
+
+let drops = [];
+let ripples = Array.from({length: 35}, () => new Ripple());
+
+function buildDrops() {
+  drops = Array.from({length: DROP_N[level]}, () => new Drop(true));
+}
+buildDrops();
+
+let glow = 0;
+
+function bg() {
+  const g = ctx.createRadialGradient(
+    canvas.width * 0.5, canvas.height * 0.25, 0,
+    canvas.width * 0.5, canvas.height * 0.6, canvas.height
+  );
+  g.addColorStop(0, '#0c1e30');
+  g.addColorStop(0.55, '#071525');
+  g.addColorStop(1, '#030c15');
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+}
+
+function mist() {
+  const g = ctx.createLinearGradient(0, canvas.height * 0.55, 0, canvas.height);
+  g.addColorStop(0, 'rgba(10, 30, 50, 0)');
+  g.addColorStop(1, 'rgba(3, 12, 20, 0.82)');
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+}
+
+function animate() {
+  requestAnimationFrame(animate);
+  bg();
+  if (glow > 0.01) {
+    ctx.fillStyle = `rgba(190, 225, 255, ${glow * 0.07})`;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    glow *= 0.88;
+  }
+  drops.forEach(d => { d.update(); d.draw(); });
+  mist();
+  ripples.forEach(r => { r.update(); r.draw(); });
+}
+animate();
+
+// ── AUDIO ────────────────────────────────────────────────────
+let audio = null;
+let playing = false;
+let currentTrack = 'Rainforest.mp3';
+
+function initAudio(track) {
+  if (audio) {
+    audio.pause();
+    audio.src = '';
+  }
+  audio = new Audio(track);
+  audio.loop = true;
+  audio.volume = document.getElementById('vol').value / 100;
+}
+
+function togglePlay() {
+  if (!audio) initAudio(currentTrack);
+  if (playing) {
+    audio.pause();
+    playing = false;
+  } else {
+    audio.play().catch(() => {});
+    playing = true;
+  }
+  const btn = document.getElementById('playBtn');
+  btn.textContent = playing ? '⏸' : '▶';
+  btn.classList.toggle('playing', playing);
+}
+
+function setTrack(btn) {
+  document.querySelectorAll('.int-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  currentTrack = btn.dataset.track;
+  const wasPlaying = playing;
+  if (audio) { audio.pause(); audio.src = ''; }
+  audio = new Audio(currentTrack);
+  audio.loop = true;
+  audio.volume = document.getElementById('vol').value / 100;
+  if (wasPlaying) audio.play().catch(() => {});
+}
+
+function setVol(v) {
+  if (audio) audio.volume = v / 100;
+}
+
+// ── LIGHTNING ────────────────────────────────────────────────
+function doLightning() {
+  glow = 1;
+  const fl = document.getElementById('flash');
+  fl.classList.add('on');
+  setTimeout(() => fl.classList.remove('on'), 75);
+  setTimeout(() => { fl.classList.add('on'); setTimeout(() => fl.classList.remove('on'), 55); }, 130);
+}
+
+document.addEventListener('click', e => {
+  if (e.target.closest('.panel')) return;
+  doLightning();
+});
+
+setInterval(() => {
+  if (playing && Math.random() < 0.08) doLightning();
+}, 5000);
+</script>
+</body>
+</html>
